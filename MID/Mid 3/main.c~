@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <semaphore.h>
+#include <signal.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#define BUF_SIZE 255
+int main(int argc, char const *argv[])
+{
+	int fd[2];
+	pipe(fd);
+	
+	int c=fork();
+
+	if(c==0)
+	{
+		dup2(fd[0],0);
+		close(fd[1]);
+		execl("p6","p6",NULL);
+	}
+	struct pollfd pfd[4];
+	close(fd[0]);
+	int i;
+	for(i=0;i<4;i++)
+		pfd[i].events=POLLIN;
+	//int pd=fileno(popen("./p6","w"));
+	//int rfd=fileno(popen("./p2","r"));
+	pfd[0].fd=fileno(popen("./p2","r"));
+	/*pfd[1].fd=fileno(popen("./p3","r"));
+	pfd[2].fd=fileno(popen("./p4","r"));
+	pfd[3].fd=fileno(popen("./p5","r"));*/
+	//printf("start\n");
+	dup2(fd[0],pfd[0].fd);printf("st\n");
+
+	//dup2(rfd,pd);
+	while(1)
+	{
+		sleep(1);
+		/*int ret=poll(pfd,4,0);
+		if(ret>0)
+		{
+			for (i = 0; i < 4; ++i)
+			{
+				if(pfd[i].revents==1)
+				{printf("include %d\n",pfd[i].fd);
+					char *buf;
+			 		buf=(char*)malloc(255);
+			 		read(pfd[i].fd,buf,255);
+			 		printf("p%s\n",buf );
+					dup2(fd[1],pfd[i].fd);
+				}
+			}
+		}
+		else
+		{
+			dup2(fd[1],1);
+			printf("This is process P1\n");
+		}*/
+	}
+	return 0;
+}

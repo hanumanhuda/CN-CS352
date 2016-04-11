@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <semaphore.h>
+#include <signal.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <sys/un.h>
+#include <fcntl.h>
+#include <assert.h>
+#include <netinet/ip.h>
+#include <linux/if_packet.h>
+#include <net/ethernet.h>
+#define BUF_SIZE 65535
+int main(int argc, char const *argv[])
+{
+	if(argc!=2)
+	{
+		printf("Pass the Port Number\n");
+		exit(1);
+	}
+	int rsfd;
+	rsfd=socket(AF_PACKET,SOCK_RAW,htons(ETH_P_ALL));
+	if (rsfd==-1)
+	{
+		printf("socket Error %d\n",errno );
+		exit(1);
+	}
+	int a=1;
+	int addr_len=sizeof(struct sockaddr_in);
+	struct sockaddr_in addr,s_addr,d_addr;
+	addr.sin_port=htons(atoi(argv[1]));
+	addr.sin_family=AF_INET;
+	addr.sin_addr.s_addr=inet_addr("127.0.0.1");
+	int ret;
+	// ret=bind(rsfd,(struct sockaddr*)&addr,addr_len);
+	/*=setsockopt(rsfd,SOL_SOCKET,SO_BINDTODEVICE,&a,1);
+	if (ret==-1)
+	{
+		printf("Bind Error %d\n",errno );
+		exit(1);
+	}*/
+	struct iphdr *iph;
+	unsigned int iphlen;
+	while(1)
+	{
+		char *buf=(char*)malloc(BUF_SIZE);
+		char *buffer=(char*)malloc(BUF_SIZE);
+		ret=recvfrom(rsfd,buf,BUF_SIZE,0,(struct sockaddr*)&addr,&addr_len);
+		if(ret<0)
+		{
+			printf("Recv Error %d\n",errno );
+			exit(1);
+		}
+		iph=(struct iphdr*)buf;
+		memset((char*)&s_addr,0,sizeof s_addr);
+		memset((char*)&d_addr,0,sizeof d_addr);
+		s_addr.sin_addr.s_addr=iph->saddr;
+		d_addr.sin_addr.s_addr=iph->daddr;
+		iphlen=iph->ihl*4;
+		printf("------------- IP Header ------------\n");
+		printf("|%4d|%4d|%8d|%16d|\n", (unsigned int)iph->version, (unsigned int)iph->ihl, (unsigned int)iph->tos, ntohs(iph->tot_len));
+		printf("------------------------------------\n");
+		printf("|%13d|R|D|M|%13d|\n", ntohs(iph->id), (unsigned int)iph->frag_off);
+		printf("------------------------------------\n");
+		printf("|%8d|%8d|%16d|\n", (unsigned int)iph->ttl, (unsigned int)iph->protocol, ntohs(iph->check));
+		printf("------------------------------------\n");
+		printf("%s\n", inet_ntoa(s_addr.sin_addr));
+		printf("------------------------------------\n");
+		printf("%s\n", inet_ntoa(d_addr.sin_addr));
+		printf("------------------------------------\n");
+		strcpy(buffer, buf+iphlen);
+		printf("\tMessage :  %s\n", buffer);
+	}
+	return 0;
+}
